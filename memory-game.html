@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Game</title>
+  <!-- Tailwind CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .card {
+      perspective: 1000px;
+    }
+
+    .card-inner {
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-front, .card-back {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      backface-visibility: hidden;
+    }
+
+    .card-back {
+      background-color: #4A5568;
+      transform: rotateY(180deg);
+    }
+
+    .matched {
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    /* Congratulation Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal button {
+      background: #4caf50;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-gray-200 flex flex-col justify-center items-center min-h-screen">
+
+  <h1 class="text-3xl font-bold mb-8">Memory Game</h1>
+
+  <!-- Game Board -->
+  <div class="grid grid-cols-4 gap-4 w-96 mb-8">
+    <!-- Cards will be dynamically generated using JavaScript -->
+  </div>
+
+  <!-- Matched pairs indicator -->
+  <p id="match-count" class="text-lg font-semibold mb-4">Matched Pairs: 0/8</p>
+
+  <!-- Reset Button -->
+  <button id="reset-button" class="bg-blue-500 text-white px-4 py-2 rounded">Reset Game</button>
+
+  <!-- Congratulation Modal -->
+  <div id="congrats-modal" class="modal">
+    <div class="modal-content">
+      <h2>Congratulations! 🎉</h2>
+      <p>You matched all the cards!</p>
+      <button id="play-again-button">Play Again</button>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      let cardsArray = [
+        { name: "1", img: "https://via.placeholder.com/100?text=1" },
+        { name: "2", img: "https://via.placeholder.com/100?text=2" },
+        { name: "3", img: "https://via.placeholder.com/100?text=3" },
+        { name: "4", img: "https://via.placeholder.com/100?text=4" },
+        { name: "5", img: "https://via.placeholder.com/100?text=5" },
+        { name: "6", img: "https://via.placeholder.com/100?text=6" },
+        { name: "7", img: "https://via.placeholder.com/100?text=7" },
+        { name: "8", img: "https://via.placeholder.com/100?text=8" }
+      ];
+
+      let gameGrid, firstCard, secondCard, lockBoard, matchedPairs;
+      const gameBoard = $('.grid');
+      const matchCount = $('#match-count');
+      const modal = $('#congrats-modal');
+
+      // Initialize the game
+      function initGame() {
+        resetBoard();
+        generateCards();
+        updateMatchedPairs(0);
+      }
+
+      // Reset the game board state
+      function resetBoard() {
+        [firstCard, secondCard, lockBoard] = [null, null, false];
+        matchedPairs = 0;
+        gameBoard.empty();
+      }
+
+      // Update the matched pairs display
+      function updateMatchedPairs(count) {
+        matchCount.text(`Matched Pairs: ${count}/8`);
+      }
+
+      // Shuffle and generate cards dynamically
+      function generateCards() {
+        gameGrid = [...cardsArray, ...cardsArray].sort(() => 0.5 - Math.random());
+
+        gameGrid.forEach((card) => {
+          const cardHTML = `
+            <div class="card w-24 h-24 bg-gray-500 cursor-pointer" data-name="${card.name}">
+              <div class="card-inner">
+                <div class="card-front bg-gray-300 flex items-center justify-center"></div>
+                <div class="card-back flex items-center justify-center">
+                  <img src="${card.img}" alt="Image ${card.name}">
+                </div>
+              </div>
+            </div>
+          `;
+          gameBoard.append(cardHTML);
+        });
+
+        // Attach click event listener to all cards
+        $('.card').on('click', handleCardClick);
+      }
+
+      // Handle card clicks
+      function handleCardClick() {
+        if (lockBoard) return;
+        if ($(this).hasClass('flipped') || $(this).hasClass('matched')) return;
+
+        $(this).addClass('flipped');
+
+        if (!firstCard) {
+          firstCard = $(this);
+        } else {
+          secondCard = $(this);
+          checkForMatch();
+        }
+      }
+
+      // Check if two selected cards match
+      function checkForMatch() {
+        const isMatch = firstCard.data('name') === secondCard.data('name');
+
+        if (isMatch) {
+          disableCards();
+          matchedPairs++;
+          updateMatchedPairs(matchedPairs);
+          if (matchedPairs === 8) {
+            setTimeout(showCongratulations, 500);
+          }
+        } else {
+          unflipCards();
+        }
+      }
+
+      // Disable matched cards
+      function disableCards() {
+        firstCard.addClass('matched');
+        secondCard.addClass('matched');
+        resetSelection();
+      }
+
+      // Unflip cards if they don't match
+      function unflipCards() {
+        lockBoard = true;
+        setTimeout(() => {
+          firstCard.removeClass('flipped');
+          secondCard.removeClass('flipped');
+          resetSelection();
+        }, 1000);
+      }
+
+      // Reset card selection
+      function resetSelection() {
+        [firstCard, secondCard] = [null, null];
+        lockBoard = false;
+      }
+
+      // Show the congratulations modal
+      function showCongratulations() {
+        modal.addClass('active');
+      }
+
+      // Hide the congratulations modal and reset the game
+      function hideCongratulations() {
+        modal.removeClass('active');
+        initGame();
+      }
+
+      // Reset the game when reset button is clicked
+      $('#reset-button').on('click', initGame);
+
+      // Play again button in modal
+      $('#play-again-button').on('click', hideCongratulations);
+
+      // Start the game on load
+      initGame();
+    });
+  </script>
+</body>
+</html>
