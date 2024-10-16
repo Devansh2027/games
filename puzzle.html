@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiddixia Puzzle Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Simple animation for puzzle pieces */
+        .puzzle-piece {
+            transition: transform 0.3s ease-in-out;
+        }
+        .puzzle-piece:hover {
+            transform: scale(1.1);
+        }
+        /* Slot styles */
+        .puzzle-slot {
+            border: 2px dashed #6B7280;
+            padding: 1rem;
+            position: relative;
+        }
+        /* Shapes for the slots */
+        .slot-circle {
+            border-radius: 50%;
+        }
+        .slot-square {
+            border-radius: 0.5rem;
+        }
+        .slot-rectangle {
+            border-radius: 0.5rem;
+            width: 80px;
+            height: 150px;
+        }
+        .slot-star {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+
+        /* Text inside slots */
+        .slot-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #6B7280;
+            pointer-events: none;
+        }
+
+        /* Animation for correct placement */
+        .correct-placement {
+            animation: bounce 0.5s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-blue-200 via-purple-200 to-purple-100 min-h-screen flex flex-col items-center justify-center">
+
+    <header class="text-center p-4">
+        <h1 class="text-4xl font-bold text-purple-600">Kiddixia Puzzle Game</h1>
+    </header>
+
+    <div class="flex flex-col items-center">
+        <h2 class="text-2xl font-semibold text-pink-600 mb-4">Match the Shapes!</h2>
+
+        <!-- Puzzle board -->
+        <div id="puzzle-board" class="grid grid-cols-2 gap-4 mb-6">
+            <!-- Slots where pieces will go -->
+            <div id="slot-circle" class="puzzle-slot slot-circle bg-white w-32 h-32 flex items-center justify-center">
+                <span class="slot-text">Circle</span>
+            </div>
+            <div id="slot-square" class="puzzle-slot slot-square bg-white w-32 h-32 flex items-center justify-center">
+                <span class="slot-text">Square</span>
+            </div>
+            <div id="slot-rectangle" class="puzzle-slot slot-rectangle bg-white flex items-center justify-center">
+                <span class="slot-text">Rectangle</span>
+            </div>
+            <div id="slot-star" class="puzzle-slot slot-star bg-white w-32 h-32 flex items-center justify-center">
+                <span class="slot-text">Star</span>
+            </div>
+        </div>
+
+        <!-- Puzzle pieces -->
+        <div class="flex space-x-4 mb-6">
+            <div id="piece-circle" class="puzzle-piece bg-blue-400 rounded-full w-20 h-20 cursor-pointer"></div>
+            <div id="piece-square" class="puzzle-piece bg-green-400 rounded-md w-20 h-20 cursor-pointer"></div>
+            <div id="piece-rectangle" class="puzzle-piece bg-yellow-400 w-16 h-24 cursor-pointer"></div>
+            <div id="piece-star" class="puzzle-piece bg-red-400 star-shape w-20 h-20 flex items-center justify-center cursor-pointer" style="clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);"></div>
+        </div>
+
+        <!-- Success message -->
+        <div id="success-message" class="hidden text-green-500 text-xl font-bold mt-6">Great Job!</div>
+
+        <!-- Reset button -->
+        <button id="reset-btn" class="hidden bg-red-400 text-white px-4 py-2 rounded mt-4 hover:bg-red-500">Reset Puzzle</button>
+    </div>
+
+    <script>
+        // Track correct placements and success count
+        let successCount = 0;
+
+        // Helper function for allowing dropping
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        // Helper function for dragging pieces
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        // Drop event for puzzle slots
+        function drop(ev, correctPieceId, slotId) {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData("text");
+
+            if (data === correctPieceId) {
+                const piece = document.getElementById(data);
+                const slot = document.getElementById(slotId);
+                slot.appendChild(piece);
+                piece.classList.add("opacity-50", "pointer-events-none", "correct-placement"); // Add animation and make unmovable
+                successCount++;
+
+                // Remove the placeholder text from the slot
+                const slotText = slot.querySelector('.slot-text');
+                if (slotText) {
+                    slotText.style.display = 'none';
+                }
+
+                // If all pieces are placed correctly
+                if (successCount === 4) {
+                    document.getElementById('success-message').classList.remove('hidden');
+                    document.getElementById('reset-btn').classList.remove('hidden');
+                }
+            }
+        }
+
+        // Reset the game
+        function resetGame() {
+            successCount = 0;
+            document.getElementById('success-message').classList.add('hidden');
+            document.getElementById('reset-btn').classList.add('hidden');
+
+            // Move pieces back to the initial area and reset their styles
+            document.getElementById('puzzle-board').appendChild(document.getElementById('piece-circle'));
+            document.getElementById('puzzle-board').appendChild(document.getElementById('piece-square'));
+            document.getElementById('puzzle-board').appendChild(document.getElementById('piece-rectangle'));
+            document.getElementById('puzzle-board').appendChild(document.getElementById('piece-star'));
+
+            const pieces = document.querySelectorAll('.puzzle-piece');
+            pieces.forEach(piece => {
+                piece.classList.remove("opacity-50", "pointer-events-none", "correct-placement");
+            });
+
+            // Reset the text in the slots
+            const slotTexts = document.querySelectorAll('.slot-text');
+            slotTexts.forEach(slotText => {
+                slotText.style.display = 'block';
+            });
+        }
+
+        // Add event listeners for draggable pieces and droppable slots
+        document.getElementById('piece-circle').setAttribute('draggable', 'true');
+        document.getElementById('piece-square').setAttribute('draggable', 'true');
+        document.getElementById('piece-rectangle').setAttribute('draggable', 'true');
+        document.getElementById('piece-star').setAttribute('draggable', 'true');
+
+        document.getElementById('piece-circle').addEventListener('dragstart', drag);
+        document.getElementById('piece-square').addEventListener('dragstart', drag);
+        document.getElementById('piece-rectangle').addEventListener('dragstart', drag);
+        document.getElementById('piece-star').addEventListener('dragstart', drag);
+
+        document.getElementById('slot-circle').addEventListener('dragover', allowDrop);
+        document.getElementById('slot-circle').addEventListener('drop', (ev) => drop(ev, 'piece-circle', 'slot-circle'));
+
+        document.getElementById('slot-square').addEventListener('dragover', allowDrop);
+        document.getElementById('slot-square').addEventListener('drop', (ev) => drop(ev, 'piece-square', 'slot-square'));
+
+        document.getElementById('slot-rectangle').addEventListener('dragover', allowDrop);
+        document.getElementById('slot-rectangle').addEventListener('drop', (ev) => drop(ev, 'piece-rectangle', 'slot-rectangle'));
+
+        document.getElementById('slot-star').addEventListener('dragover', allowDrop);
+        document.getElementById('slot-star').addEventListener('drop', (ev) => drop(ev, 'piece-star', 'slot-star'));
+
+        // Add reset button functionality
+        document.getElementById('reset-btn').addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
